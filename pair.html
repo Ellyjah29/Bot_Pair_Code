@@ -33,11 +33,12 @@
       color: var(--text);
       font-family: 'Exo 2', sans-serif;
       min-height: 100vh;
-      overflow: hidden;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       position: relative;
+      padding: 40px 20px;
+      box-sizing: border-box;
     }
 
     /* Canvas for particles */
@@ -60,6 +61,8 @@
       z-index: 10;
       transform: translateY(0);
       animation: float 6s ease-in-out infinite;
+      min-height: 400px;
+      overflow-y: auto;
     }
 
     @keyframes float {
@@ -372,11 +375,13 @@
       margin-top: 28px;
       font-size: 12px;
       color: rgba(224, 247, 250, 0.4);
+      line-height: 1.6;
     }
 
     .footer a {
       color: var(--neon);
       text-decoration: none;
+      font-weight: 500;
     }
 
     /* Animations */
@@ -395,8 +400,9 @@
 
     @media (max-width: 480px) {
       .container {
-        padding: 36px 28px;
+        padding: 36px 20px;
         border-radius: 20px;
+        margin: 0 auto;
       }
 
       .title {
@@ -427,7 +433,7 @@
       </div>
       <h1 class="title">SEPTORCH</h1>
       <p class="subtitle">Secure WhatsApp Device Linking</p>
-      <div class="tagline">Powered by Intelligence</div>
+      <div class="tagline">Powered by Septorch</div>
 
       <div class="social-icons">
         <a href="https://youtube.com/@septorch?si=sNCype1tWPrto22F" target="_blank" title="YouTube"><i class="fab fa-youtube"></i></a>
@@ -472,7 +478,10 @@
     </button>
 
     <div class="footer">
-      © 2025 <a href="https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04">SEPTORCH</a> • All Rights Reserved
+      © 2025 <a href="https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04">SEPTORCH</a> • All Rights Reserved<br>
+      <span style="font-size:11px; color:rgba(224,247,250,0.5);">
+        Automation & Growth Tools — Chat automation, contact growth, and smart business tools for creators, brands, and entrepreneurs.
+      </span>
     </div>
   </div>
 
