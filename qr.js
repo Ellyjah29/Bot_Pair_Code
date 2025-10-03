@@ -150,14 +150,14 @@ router.get('/', async (req, res) => {
                             
                             // Extract just the file ID + key (remove https://mega.nz/file/)
                             const sessionId = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
-
-                            // ✅ Send Session ID ALONE — easy to copy
-                            await sock.sendMessage(userJid, {
-                                text:
+// ✅ Send Session ID ALONE — 100% clean, no extra text
+await sock.sendMessage(userJid, {
+    text: `\`\`\`
 ${sessionId}
-                            });
+\`\`\``
+});
 
-                            console.log("✅ Session ID sent alone for easy copy-paste");
+console.log("✅ Session ID sent completely alone for maximum copy-paste ease");
 
                             // ✅ Send YouTube tutorial with image preview
                             await sock.sendMessage(userJid, {
