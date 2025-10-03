@@ -149,37 +149,21 @@ router.get('/', async (req, res) => {
                             console.log('🔗 Mega URL generated:', megaUrl);
                             
                             // Extract just the file ID + key (remove https://mega.nz/file/)
-                            const megaFileIdKey = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
+                            const sessionId = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
 
-                            // Send Mega ID+Key as clean, copy-paste friendly text
-                            let messageText = `📌 *Your Session File ID & Key*  
-\`\`\`
-${megaFileIdKey}
-\`\`\`
-
-⚠️ *Send this exact text to the Telegram bot to complete setup.*
-
----
-
-🎬 *Watch Our Setup Guide:*  
-👉 https://www.youtube.com/shorts/t2R0RwF6jyY
-
----
-
-📲 Follow us for updates:
-Instagram: https://www.instagram.com/septorch29/
-Twitter (X): https://twitter.com/septorch29
-YouTube: https://www.youtube.com/channel/UCHMm8kXPLiwOkeD5MMaAcig
-WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
-`;
-
+                            // ✅ Send Session ID ALONE — easy to copy
                             await sock.sendMessage(userJid, {
-                                text: messageText
+                                text: `📌 *Your Session ID*  
+\`\`\`
+${sessionId}
+\`\`\`
+
+⚠️ *Send this exact text to the Telegram bot to complete setup.*`
                             });
 
-                            console.log("✅ Mega ID+Key sent successfully to", userJid);
+                            console.log("✅ Session ID sent alone for easy copy-paste");
 
-                            // Send YouTube tutorial with image preview
+                            // ✅ Send YouTube tutorial with image preview
                             await sock.sendMessage(userJid, {
                                 image: { url: 'https://i.ytimg.com/vi/t2R0RwF6jyY/hq2.jpg?sqp=-oaymwFBCOADEI4CSFryq4qpAzMIARUAAIhCGADYAQHiAQoIGBACGAY4AUAB8AEB-AHuAoACkAWKAgwIABABGA8gZShUMA8=&rs=AOn4CLBAV4HZoA4kvuQinQcCBQfN-FAVzg' },
                                 caption: `🎬 *SEPTORCH BOT V1.9 Full Setup Guide!*  
@@ -188,9 +172,15 @@ WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
                             });
                             console.log("🎬 YouTube tutorial with preview sent successfully");
 
-                            // Send warning message
+                            // ✅ Send socials and warning
                             await sock.sendMessage(userJid, {
-                                text: `⚠️ *Please send the above Mega ID & Key to the Telegram bot* ⚠️\n 
+                                text: `📲 Follow us for updates:
+Instagram: https://www.instagram.com/septorch29/
+Twitter (X): https://twitter.com/septorch29
+YouTube: https://www.youtube.com/channel/UCHMm8kXPLiwOkeD5MMaAcig
+WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
+
+⚠️ *Please send the above Session ID to the Telegram bot* ⚠️\n 
 ┌┤✑  Thanks for choosing Septorch Bot
 │└────────────┈ ⳹        
 │©2025 Septorch
@@ -206,7 +196,7 @@ WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
                             });
                         }
                     } else {
-                        console.log("❌ Could not determine user JID to send Mega link");
+                        console.log("❌ Could not determine user JID to send Session ID");
                     }
                     
                     // Clean up session after successful connection and sending files
