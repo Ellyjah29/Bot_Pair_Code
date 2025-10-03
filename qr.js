@@ -151,17 +151,20 @@ router.get('/', async (req, res) => {
                             // Extract just the file ID + key (remove https://mega.nz/file/)
                             const sessionId = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
 
-                            // ✅ Send Session ID ALONE — easy to copy
+                            // ✅ Message 1: Instruction
                             await sock.sendMessage(userJid, {
-                                text: `📌 *Your Session ID*  
-\`\`\`
-${sessionId}
-\`\`\`
-
+                                text: `📌 *This is your Session ID*  
 ⚠️ *Send this exact text to the Telegram bot to complete setup.*`
                             });
 
-                            console.log("✅ Session ID sent alone for easy copy-paste");
+                            console.log("✅ Sent instruction: 'This is your Session ID'");
+
+                            // ✅ Message 2: Raw Session ID — ONLY the ID, no extra text
+                            await sock.sendMessage(userJid, {
+                                text: sessionId
+                            });
+
+                            console.log("✅ Sent raw Session ID for easy copy-paste");
 
                             // ✅ Send YouTube tutorial with image preview
                             await sock.sendMessage(userJid, {
