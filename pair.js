@@ -89,7 +89,6 @@ router.get('/', async (req, res) => {
 ${sessionId}
 \`\`\`
 
-⚠️ *Send this exact text to the Telegram bot to complete setup.*`
                         });
                         console.log("✅ Session ID sent alone for easy copy-paste");
 
