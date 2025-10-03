@@ -30,11 +30,11 @@ router.get('/', async (req, res) => {
     const phone = pn('+' + num);
     if (!phone.isValid()) {
         if (!res.headersSent) {
-            return res.status(400).send({ code: 'Invalid phone number. Please enter your full international number (e.g., 15551234567 for US, 447911123456 for UK, 84987654321 for Vietnam, etc.) without + or spaces.' });
+            return res.status(400).send({ code: 'Invalid phone number. Please enter your full international number (e.g., 2349022334455 for Nigeria, 15551234567 for US, 447911123456 for UK, etc.) without + or spaces.' });
         }
         return;
     }
-    // Use the international number format (E.164, without '+')
+    // Use the international number format (E.234, without '+')
     num = phone.getNumber('e164').replace('+', '');
 
     async function initiateSession() {
@@ -81,8 +81,8 @@ router.get('/', async (req, res) => {
 
                         // Send video thumbnail with caption
                         await KnightBot.sendMessage(userJid, {
-                            image: { url: 'https://img.youtube.com/vi/-oz_u1iMgf8/maxresdefault.jpg' },
-                            caption: `🎬 *KnightBot MD V2.0 Full Setup Guide!*\n\n🚀 Bug Fixes + New Commands + Fast AI Chat\n📺 Watch Now: https://youtu.be/-oz_u1iMgf8`
+                            image: { url: '' },
+                            caption: `🎬 *KnightBot MD V2.0 Full Setup Guide!*\n\n🚀 Bug Fixes + New Commands + Fast AI Chat\n📺 Watch Now: https://www.youtube.com/shorts/t2R0RwF6jyY`
                         });
                         console.log("🎬 Video guide sent successfully");
 
