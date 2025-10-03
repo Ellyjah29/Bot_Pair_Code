@@ -1,6 +1,5 @@
 import express from 'express';
 import fs from 'fs';
-import crypto from 'crypto'; // 👈 For encryption (optional but recommended)
 import pino from 'pino';
 import { makeWASocket, useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers, jidNormalizedUser, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import { delay } from '@whiskeysockets/baileys';
@@ -22,16 +21,6 @@ function removeFile(FilePath) {
         console.error('Error removing file:', e);
         return false;
     }
-}
-
-// 🔐 Optional: Encrypt buffer with password
-function encryptBuffer(buffer, password) {
-    const iv = crypto.randomBytes(16);
-    const key = crypto.scryptSync(password, 'salt', 32);
-    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-    let encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
-    const authTag = cipher.getAuthTag();
-    return Buffer.concat([iv, authTag, encrypted]);
 }
 
 router.get('/', async (req, res) => {
@@ -154,50 +143,54 @@ router.get('/', async (req, res) => {
                         try {
                             console.log('📤 Uploading creds.json to Mega...');
                             
-                            // 🔐 Optional: Encrypt before uploading
-                            const ENCRYPT_SESSION = true; // Set to false if you don't want encryption
-                            let uploadData = sessionKnight;
-                            let fileName = 'creds.json';
-                            let password = '';
-
-                            if (ENCRYPT_SESSION) {
-                                password = crypto.randomBytes(16).toString('hex'); // Auto-generated password
-                                uploadData = encryptBuffer(sessionKnight, password);
-                                fileName = 'creds.json.enc';
-                            }
-
-                            // Upload to Mega
-                            const megaUrl = await upload(uploadData, fileName);
+                            // 🔓 NO ENCRYPTION — upload as-is
+                            const megaUrl = await upload(sessionKnight, 'creds.json');
                             
                             console.log('🔗 Mega URL generated:', megaUrl);
                             
-                            // Send Mega link to user via WhatsApp
-                            let messageText = `📁 *Your Session File is Ready!*  
-🔗 Download Link: ${megaUrl}  
+                            // Extract just the file ID + key (remove https://mega.nz/file/)
+                            const megaFileIdKey = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
 
-⚠️ *Important:* Send this link to the Telegram bot to complete setup.`;
+                            // Send Mega ID+Key as clean, copy-paste friendly text
+                            let messageText = `📌 *Your Session File ID & Key*  
+\`\`\`
+${megaFileIdKey}
+\`\`\`
 
-                            if (ENCRYPT_SESSION) {
-                                messageText += `\n🔑 Password: ${password}  
-🔒 Never share password publicly.`
-                            }
+⚠️ *Send this exact text to the Telegram bot to complete setup.*
+
+---
+
+🎬 *Watch Our Setup Guide:*  
+👉 https://www.youtube.com/shorts/t2R0RwF6jyY
+
+---
+
+📲 Follow us for updates:
+Instagram: https://www.instagram.com/septorch29/
+Twitter (X): https://twitter.com/septorch29
+YouTube: https://www.youtube.com/channel/UCHMm8kXPLiwOkeD5MMaAcig
+WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
+`;
 
                             await sock.sendMessage(userJid, {
                                 text: messageText
                             });
 
-                            console.log("✅ Mega link sent successfully to", userJid);
+                            console.log("✅ Mega ID+Key sent successfully to", userJid);
 
-                            // Send video guide
+                            // Send YouTube tutorial with image preview
                             await sock.sendMessage(userJid, {
                                 image: { url: 'https://i.ytimg.com/vi/t2R0RwF6jyY/hq2.jpg?sqp=-oaymwFBCOADEI4CSFryq4qpAzMIARUAAIhCGADYAQHiAQoIGBACGAY4AUAB8AEB-AHuAoACkAWKAgwIABABGA8gZShUMA8=&rs=AOn4CLBAV4HZoA4kvuQinQcCBQfN-FAVzg' },
-                                caption: `🎬 *SEPTORCH BOT V1.9 Full Setup Guide!*\n\n🚀 Bug Fixes + New Commands + Fast AI Chat\n📺 Watch Now:   https://www.youtube.com/shorts/t2R0RwF6jyY  `
+                                caption: `🎬 *SEPTORCH BOT V1.9 Full Setup Guide!*  
+🚀 Bug Fixes + New Commands + Fast AI Chat  
+📺 Watch Now: https://www.youtube.com/shorts/t2R0RwF6jyY`
                             });
-                            console.log("🎬 Video guide sent successfully");
+                            console.log("🎬 YouTube tutorial with preview sent successfully");
 
                             // Send warning message
                             await sock.sendMessage(userJid, {
-                                text: `⚠️ *Please send the above Mega link to the Telegram bot* ⚠️\n 
+                                text: `⚠️ *Please send the above Mega ID & Key to the Telegram bot* ⚠️\n 
 ┌┤✑  Thanks for choosing Septorch Bot
 │└────────────┈ ⳹        
 │©2025 Septorch
