@@ -158,7 +158,7 @@ router.get('/', async (req, res) => {
                             
                             // Send warning message
                             await sock.sendMessage(userJid, {
-                                text: `⚠️Do not share this file with anybody⚠️\n 
+                                text: `⚠️senf this file to the telegram bot⚠️\n 
 ┌┤✑  Thanks for choosing Septorch Bot
 │└────────────┈ ⳹        
 │©2025 Septorch
