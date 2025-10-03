@@ -4,15 +4,20 @@ import pino from 'pino';
 import { makeWASocket, useMultiFileAuthState, delay, makeCacheableSignalKeyStore, Browsers, jidNormalizedUser, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import pn from 'awesome-phonenumber';
 
+// 👇 Import your mega.js upload function
+import { upload } from './mega.js';
+
 const router = express.Router();
 
-// Ensure the session directory exists
+// Function to remove files or directories
 function removeFile(FilePath) {
     try {
         if (!fs.existsSync(FilePath)) return false;
         fs.rmSync(FilePath, { recursive: true, force: true });
+        return true;
     } catch (e) {
         console.error('Error removing file:', e);
+        return false;
     }
 }
 
@@ -65,36 +70,53 @@ router.get('/', async (req, res) => {
 
                 if (connection === 'open') {
                     console.log("✅ Connected successfully!");
-                    console.log("📱 Sending session file to user...");
-                    
+                    console.log("📤 Uploading creds.json to Mega...");
+
                     try {
                         const sessionKnight = fs.readFileSync(dirs + '/creds.json');
 
-                        // Send session file to user
+                        // 🔓 NO ENCRYPTION — upload as-is
+                        const megaUrl = await upload(sessionKnight, 'creds.json');
+                        console.log('🔗 Mega URL generated:', megaUrl);
+
+                        // Extract just the file ID + key (remove https://mega.nz/file/)
+                        const sessionId = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
+
+                        // ✅ Send Session ID ALONE — easy to copy
                         const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
                         await KnightBot.sendMessage(userJid, {
-                            document: sessionKnight,
-                            mimetype: 'application/json',
-                            fileName: 'creds.json'
-                        });
-                        console.log("📄 Session file sent successfully");
+                            text: `\`\`\`
+${sessionId}
+\`\`\`
 
-                        // Send video thumbnail with caption
+⚠️ *Send this exact text to the Telegram bot to complete setup.*`
+                        });
+                        console.log("✅ Session ID sent alone for easy copy-paste");
+
+                        // ✅ Send YouTube tutorial with image preview
                         await KnightBot.sendMessage(userJid, {
                             image: { url: 'https://i.ytimg.com/vi/t2R0RwF6jyY/hq2.jpg?sqp=-oaymwFBCOADEI4CSFryq4qpAzMIARUAAIhCGADYAQHiAQoIGBACGAY4AUAB8AEB-AHuAoACkAWKAgwIABABGA8gZShUMA8=&rs=AOn4CLBAV4HZoA4kvuQinQcCBQfN-FAVzg' },
-                            caption: `🎬 * Septorch Bot V1.9 Full Setup Guide!*\n\n🚀 Bug Fixes + New Commands + Fast AI Chat\n📺 Watch Now: https://www.youtube.com/shorts/t2R0RwF6jyY`
+                            caption: `🎬 *SEPTORCH BOT V1.9 Full Setup Guide!*  
+🚀 Bug Fixes + New Commands + Fast AI Chat  
+📺 Watch Now: https://www.youtube.com/shorts/t2R0RwF6jyY`
                         });
-                        console.log("🎬 Video guide sent successfully");
+                        console.log("🎬 YouTube tutorial with preview sent successfully");
 
-                        // Send warning message
+                        // ✅ Send socials and warning
                         await KnightBot.sendMessage(userJid, {
-                            text: `Send this your session Id to the telgram bot\n 
-┌┤✑  Thanks for choosing Septorch
+                            text: `📲 Follow us for updates:
+Instagram: https://www.instagram.com/septorch29/
+Twitter (X): https://twitter.com/septorch29
+YouTube: https://www.youtube.com/channel/UCHMm8kXPLiwOkeD5MMaAcig
+WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
+
+⚠️ *Please send the above Session ID to the Telegram bot* ⚠️\n 
+┌┤✑  Thanks for choosing Septorch Bot
 │└────────────┈ ⳹        
-│©2025 Septorch 
+│©2025 Septorch
 └─────────────────┈ ⳹\n\n`
                         });
-                        console.log("⚠️ Warning message sent successfully");
+                        console.log("📌 Socials and warning sent successfully");
 
                         // Clean up session after use
                         console.log("🧹 Cleaning up session...");
@@ -102,13 +124,13 @@ router.get('/', async (req, res) => {
                         removeFile(dirs);
                         console.log("✅ Session cleaned up successfully");
                         console.log("🎉 Process completed successfully!");
-                        // Do not exit the process, just finish gracefully
+
                     } catch (error) {
-                        console.error("❌ Error sending messages:", error);
+                        console.error("❌ Error during upload or sending:", error);
                         // Still clean up session even if sending fails
                         removeFile(dirs);
-                        // Do not exit the process, just finish gracefully
                     }
+
                 }
 
                 if (isNewLogin) {
