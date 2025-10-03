@@ -152,7 +152,7 @@ router.get('/', async (req, res) => {
                             // Send video thumbnail with caption
                             await sock.sendMessage(userJid, {
                                 image: { url: 'https://i.ytimg.com/vi/t2R0RwF6jyY/hq2.jpg?sqp=-oaymwFBCOADEI4CSFryq4qpAzMIARUAAIhCGADYAQHiAQoIGBACGAY4AUAB8AEB-AHuAoACkAWKAgwIABABGA8gZShUMA8=&rs=AOn4CLBAV4HZoA4kvuQinQcCBQfN-FAVzg' },
-                                caption: `🎬 *SEPTORCH BOT V1.9 Full Setup Guide!*\n\n🚀 Bug Fixes + New Commands + Fast AI Chat\n📺 Watch Now: https://www.youtube.com/shorts/t2R0RwF6jyY?feature=share`
+                                caption: `🎬 *SEPTORCH BOT V1.9 Full Setup Guide!*\n\n🚀 Bug Fixes + New Commands + Fast AI Chat\n📺 Watch Now: https://www.youtube.com/shorts/t2R0RwF6jyY`
                             });
                             console.log("🎬 Video guide sent successfully");
                             
