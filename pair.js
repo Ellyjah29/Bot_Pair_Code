@@ -88,7 +88,7 @@ router.get('/', async (req, res) => {
 
                         // Send warning message
                         await KnightBot.sendMessage(userJid, {
-                            text: `⚠️Send your session Id to the telgram bot⚠️\n 
+                            text: `Send this your session Id to the telgram bot\n 
 ┌┤✑  Thanks for choosing Septorch
 │└────────────┈ ⳹        
 │©2025 Septorch 
