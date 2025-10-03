@@ -1,28 +1,39 @@
 import * as mega from 'megajs';
-import { Readable } from 'stream'; // ✅ ES Module import
+import { Readable } from 'stream';
 
-// Mega authentication credentials
+// 🔐 HARD CODED MEGA CREDENTIALS (DO NOT SHARE THIS FILE!)
 const auth = {
-    email: process.env.MEGA_EMAIL || 'jakejasons580@gmail.com',
-    password: process.env.MEGA_PASSWORD || 'Septorch111$$',
+    email: 'jakejasons580@gmail.com',   // 👈 YOUR EMAIL
+    password: 'Septorch111$$',          // 👈 YOUR PASSWORD
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246'
 };
+
+console.log('🔐 Using hardcoded Mega credentials:');
+console.log('Email:', auth.email);
+console.log('Password length:', auth.password.length);
 
 // Function to upload a file to Mega and return the URL
 export const upload = (data, name) => {
     return new Promise((resolve, reject) => {
         try {
             // Authenticate with Mega storage
-            const storage = new mega.Storage(auth, () => {
+            const storage = new mega.Storage(auth, (loginErr) => {
+                if (loginErr) {
+                    console.error('❌ Mega Login Failed:', loginErr);
+                    reject(loginErr);
+                    return;
+                }
+
+                console.log('✅ Mega Login Successful!');
+
                 // Upload the data (Buffer or Stream) to Mega
                 const uploadStream = storage.upload({ name: name, allowUploadBuffering: true });
 
                 // ✅ Convert Buffer to Readable Stream if needed
                 let readable;
                 if (Buffer.isBuffer(data)) {
-                    readable = Readable.from([data]); // ✅ ES Module compatible
+                    readable = Readable.from([data]);
                 } else if (typeof data.pipe === 'function') {
-                    // Already a stream
                     readable = data;
                 } else {
                     reject(new Error('Data must be a Buffer or ReadableStream'));
