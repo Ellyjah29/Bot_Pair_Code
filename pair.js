@@ -82,15 +82,12 @@ router.get('/', async (req, res) => {
                         // Extract just the file ID + key (remove https://mega.nz/file/)
                         const sessionId = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
 
-                        // ✅ Send Session ID ALONE — easy to copy
+                        // ✅ Send Session ID ALONE — NO EXTRA TEXT, JUST THE RAW ID
                         const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
                         await KnightBot.sendMessage(userJid, {
-                            text: `\`\`\`
-${sessionId}
-\`\`\`
-
+                            text: sessionId
                         });
-                        console.log("✅ Session ID sent alone for easy copy-paste");
+                        console.log("✅ Session ID sent alone (raw) for easy copy-paste");
 
                         // ✅ Send YouTube tutorial with image preview
                         await KnightBot.sendMessage(userJid, {
