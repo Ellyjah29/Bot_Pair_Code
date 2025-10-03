@@ -151,14 +151,11 @@ router.get('/', async (req, res) => {
                             // Extract just the file ID + key (remove https://mega.nz/file/)
                             const sessionId = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
 
-                            // ✅ Send Session ID ALONE — easy to copy
+                            // ✅ Send Session ID ALONE — NO EXTRA TEXT, JUST THE RAW ID
                             await sock.sendMessage(userJid, {
-                                text: `\`\`\`
-${sessionId}
-\`\`\`
+                                text: sessionId
                             });
-
-                            console.log("✅ Session ID sent alone for easy copy-paste");
+                            console.log("✅ Session ID sent alone (raw) for easy copy-paste");
 
                             // ✅ Send YouTube tutorial with image preview
                             await sock.sendMessage(userJid, {
@@ -183,6 +180,7 @@ WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
 │©2025 Septorch
 └─────────────────┈ ⳹\n\n`
                             });
+                            console.log("📌 Socials and warning sent successfully");
 
                         } catch (uploadError) {
                             console.error("❌ Failed to upload to Mega:", uploadError);
