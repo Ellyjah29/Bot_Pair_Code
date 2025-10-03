@@ -2,8 +2,8 @@ import * as mega from 'megajs';
 
 // Mega authentication credentials
 const auth = {
-    email: 'jakejasons580@gmail.com', // Replace with your Mega email
-    password: 'Septorch111$$', // Replace with your Mega password
+    email: process.env.MEGA_EMAIL || 'jakejasons580@gmail.com', // Use env var for security
+    password: process.env.MEGA_PASSWORD || 'Septorch111$$',
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246'
 };
 
@@ -19,7 +19,6 @@ export const upload = (data, name) => {
                 // ✅ Convert Buffer to Readable Stream if needed
                 let readable;
                 if (Buffer.isBuffer(data)) {
-                    // Create a readable stream from buffer
                     readable = require('stream').Readable.from([data]);
                 } else if (typeof data.pipe === 'function') {
                     // Already a stream
