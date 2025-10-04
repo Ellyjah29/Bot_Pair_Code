@@ -266,6 +266,14 @@ WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
                                 res.status(503).send({ code: 'Connection failed after multiple attempts' });
                             }
                         }
+                    } else if (statusCode === 440) {
+                        console.log('🛑 Stream Errored (conflict) — logging out all devices...');
+                        // Force logout by deleting session
+                        removeFile(dirs);
+                        if (!responseSent) {
+                            responseSent = true;
+                            res.status(503).send({ code: 'Conflict detected — please log out all other devices and try again.' });
+                        }
                     } else {
                         console.log('🔄 Connection lost - attempting to reconnect...');
                         // Let it reconnect automatically
