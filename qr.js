@@ -149,17 +149,37 @@ router.get('/', async (req, res) => {
                             console.log('🔗 Mega URL generated:', megaUrl);
                             
                             // Extract just the file ID + key (remove https://mega.nz/file/)
-                            const sessionId = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
-// ✅ Send Session ID ALONE — 100% clean, no extra text
-await sock.sendMessage(userJid, {
-    text: `\`\`\`
-${sessionId}
-\`\`\``
-});
+                            const megaFileIdKey = megaUrl.split('/file/')[1]; // e.g., "CRojAZKT#16tZq5iEEPVEPeKkHmQoJ4Ds3kasJ-1qVLQDwTuFKEU"
 
-console.log("✅ Session ID sent completely alone for maximum copy-paste ease");
+                            // Send Mega ID+Key as clean, copy-paste friendly text
+                            let messageText = `📌 *Your Session File ID & Key*  
+\`\`\`
+${megaFileIdKey}
+\`\`\`
 
-                            // ✅ Send YouTube tutorial with image preview
+⚠️ *Send this exact text to the Telegram bot to complete setup.*
+
+---
+
+🎬 *Watch Our Setup Guide:*  
+👉 https://www.youtube.com/shorts/t2R0RwF6jyY
+
+---
+
+📲 Follow us for updates:
+Instagram: https://www.instagram.com/septorch29/
+Twitter (X): https://twitter.com/septorch29
+YouTube: https://www.youtube.com/channel/UCHMm8kXPLiwOkeD5MMaAcig
+WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
+`;
+
+                            await sock.sendMessage(userJid, {
+                                text: messageText
+                            });
+
+                            console.log("✅ Mega ID+Key sent successfully to", userJid);
+
+                            // Send YouTube tutorial with image preview
                             await sock.sendMessage(userJid, {
                                 image: { url: 'https://i.ytimg.com/vi/t2R0RwF6jyY/hq2.jpg?sqp=-oaymwFBCOADEI4CSFryq4qpAzMIARUAAIhCGADYAQHiAQoIGBACGAY4AUAB8AEB-AHuAoACkAWKAgwIABABGA8gZShUMA8=&rs=AOn4CLBAV4HZoA4kvuQinQcCBQfN-FAVzg' },
                                 caption: `🎬 *SEPTORCH BOT V1.9 Full Setup Guide!*  
@@ -168,20 +188,25 @@ console.log("✅ Session ID sent completely alone for maximum copy-paste ease");
                             });
                             console.log("🎬 YouTube tutorial with preview sent successfully");
 
-                            // ✅ Send socials and warning
+                            // Send warning message
                             await sock.sendMessage(userJid, {
-                                text: `📲 Follow us for updates:
-Instagram: https://www.instagram.com/septorch29/
-Twitter (X): https://twitter.com/septorch29
-YouTube: https://www.youtube.com/channel/UCHMm8kXPLiwOkeD5MMaAcig
-WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
-
-⚠️ *Please send the above Session ID to the Telegram bot* ⚠️\n 
+                                text: `⚠️ *Please send the above Mega ID & Key to the Telegram bot* ⚠️\n 
 ┌┤✑  Thanks for choosing Septorch Bot
 │└────────────┈ ⳹        
 │©2025 Septorch
 └─────────────────┈ ⳹\n\n`
                             });
+
+                            // ✅ IMMEDIATE CLEANUP — delete session folder right after sending messages
+                            setTimeout(() => {
+                                console.log('🧹 Cleaning up session immediately...');
+                                const deleted = removeFile(dirs);
+                                if (deleted) {
+                                    console.log('✅ Session cleaned up successfully');
+                                } else {
+                                    console.log('❌ Failed to clean up session folder');
+                                }
+                            }, 0); // 👈 Zero delay — runs after event loop
 
                         } catch (uploadError) {
                             console.error("❌ Failed to upload to Mega:", uploadError);
@@ -190,21 +215,20 @@ WhatsApp Channel: https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
                             await sock.sendMessage(userJid, {
                                 text: `❌ Failed to upload session file to Mega.\n\nPlease try again later or contact support.\n\nError: ${uploadError.message}`
                             });
+
+                            // Clean up even on failure
+                            setTimeout(() => {
+                                console.log('🧹 Cleaning up session after error...');
+                                removeFile(dirs);
+                            }, 0);
                         }
                     } else {
-                        console.log("❌ Could not determine user JID to send Session ID");
+                        console.log("❌ Could not determine user JID to send Mega link");
+                        // Clean up if no JID
+                        setTimeout(() => {
+                            removeFile(dirs);
+                        }, 0);
                     }
-                    
-                    // Clean up session after successful connection and sending files
-                    setTimeout(() => {
-                        console.log('🧹 Cleaning up session...');
-                        const deleted = removeFile(dirs);
-                        if (deleted) {
-                            console.log('✅ Session cleaned up successfully');
-                        } else {
-                            console.log('❌ Failed to clean up session folder');
-                        }
-                    }, 15000); // Wait 15 seconds before cleanup to ensure messages are sent
                 }
 
                 if (connection === 'close') {
