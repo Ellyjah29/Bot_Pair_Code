@@ -103,8 +103,9 @@ router.get('/', async (req, res) => {
                     creds: state.creds,
                     keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
                 },
-                markOnlineOnConnect: false,
-                generateHighQualityLinkPreview: false,
+                markOnlineOnConnect: true, // ✅ MUST BE TRUE for full registration
+                generateHighQualityLinkPreview: true, // ✅ Helps with message processing
+                syncFullHistory: true, // ✅ Ensures full message history sync
                 defaultQueryTimeoutMs: 60000,
                 connectTimeoutMs: 60000,
                 keepAliveIntervalMs: 30000,
