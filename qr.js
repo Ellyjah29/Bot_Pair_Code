@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import pino from 'pino';
 import { makeWASocket, useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers, jidNormalizedUser, fetchLatestBaileysVersion } from 'baileys';
-import { delay } from '/baileys';
+import { delay } from 'baileys';
 import QRCode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 
