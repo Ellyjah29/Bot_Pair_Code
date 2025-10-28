@@ -31,9 +31,9 @@ https://youtube.com/GlobalTechInfo
 *ULTRA-MD--WHATTSAPP-BOT* 🥀
 `;
 
-// Ensure the directory is empty when the app starts
+// Ensure auth directory is empty
 if (fs.existsSync('./auth_info_baileys')) {
-  fs.emptyDirSync(new URL('./auth_info_baileys', import.meta.url).pathname);
+  fs.emptyDirSync('./auth_info_baileys');
 }
 
 router.get('/', async (req, res) => {
@@ -41,6 +41,7 @@ router.get('/', async (req, res) => {
 
   async function SUHAIL() {
     const { state, saveCreds } = await useMultiFileAuthState('./auth_info_baileys');
+
     try {
       const Smd = makeWASocket({
         auth: {
@@ -56,9 +57,7 @@ router.get('/', async (req, res) => {
         await delay(1500);
         num = num.replace(/[^0-9]/g, '');
         const code = await Smd.requestPairingCode(num);
-        if (!res.headersSent) {
-          await res.send({ code });
-        }
+        if (!res.headersSent) await res.send({ code });
       }
 
       Smd.ev.on('creds.update', saveCreds);
@@ -68,8 +67,7 @@ router.get('/', async (req, res) => {
         if (connection === "open") {
           try {
             await delay(10000);
-
-            const authPath = './auth_info_baileys/';
+            const auth_path = './auth_info_baileys/';
             const user = Smd.user.id;
 
             function randomMegaId(length = 6, numberLength = 4) {
@@ -82,19 +80,19 @@ router.get('/', async (req, res) => {
               return `${result}${number}`;
             }
 
-            const mega_url = await upload(fs.createReadStream(authPath + 'creds.json'), `${randomMegaId()}.json`);
+            const mega_url = await upload(fs.createReadStream(auth_path + 'creds.json'), `${randomMegaId()}.json`);
             const Scan_Id = mega_url.replace('https://mega.nz/file/', '');
 
             const msg = await Smd.sendMessage(user, { text: Scan_Id });
             await Smd.sendMessage(user, { text: MESSAGE }, { quoted: msg });
             await delay(1000);
-
-            fs.emptyDirSync('./auth_info_baileys');
+            try { fs.emptyDirSync('./auth_info_baileys'); } catch (e) {}
           } catch (e) {
-            console.log("Error during file upload or message send: ", e);
+            console.log("Error during file upload or message send:", e);
           }
         }
 
+        // Handle disconnection reasons
         if (connection === "close") {
           const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
           switch (reason) {
@@ -121,14 +119,10 @@ router.get('/', async (req, res) => {
       });
 
     } catch (err) {
-      console.log("Error in SUHAIL function: ", err);
+      console.log("Error in SUHAIL function:", err);
       exec('pm2 restart qasim');
-      console.log("Service restarted due to error");
-      SUHAIL();
-      fs.emptyDirSync('./auth_info_baileys');
-      if (!res.headersSent) {
-        await res.send({ code: "Try After Few Minutes" });
-      }
+      await fs.emptyDirSync('./auth_info_baileys');
+      if (!res.headersSent) await res.send({ code: "Try After Few Minutes" });
     }
   }
 
