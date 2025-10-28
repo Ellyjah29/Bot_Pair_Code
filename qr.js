@@ -3,7 +3,6 @@ import { upload } from './mega.js';
 import express from 'express';
 import pino from "pino";
 import { toBuffer } from "qrcode";
-import path from 'path';
 import fs from "fs-extra";
 import { Boom } from "@hapi/boom";
 import {
@@ -11,8 +10,7 @@ import {
   useMultiFileAuthState,
   Browsers,
   delay,
-  DisconnectReason,
-  makeInMemoryStore
+  DisconnectReason
 } from "@whiskeysockets/baileys";
 
 const router = express.Router();
@@ -33,16 +31,12 @@ https://youtube.com/GlobalTechInfo
 *ULTRA-MD--WHATTSAPP-BOT* 🥀
 `;
 
-// Ensure auth directory is clean
+// Clean auth folder at startup
 if (fs.existsSync('./auth_info_baileys')) {
   fs.emptyDirSync('./auth_info_baileys');
 }
 
 router.get('/', async (req, res) => {
-  const store = makeInMemoryStore({
-    logger: pino().child({ level: 'silent', stream: 'store' })
-  });
-
   async function SUHAIL() {
     const { state, saveCreds } = await useMultiFileAuthState('./auth_info_baileys');
 
@@ -57,7 +51,7 @@ router.get('/', async (req, res) => {
       Smd.ev.on("connection.update", async (s) => {
         const { connection, lastDisconnect, qr } = s;
 
-        // Send QR Code
+        // Send QR image to client
         if (qr && !res.headersSent) {
           try {
             const qrBuffer = await toBuffer(qr);
@@ -70,24 +64,25 @@ router.get('/', async (req, res) => {
           }
         }
 
-        // Connection opened
+        // When connected successfully
         if (connection === "open") {
           await delay(3000);
           const user = Smd.user.id;
 
+          // Generate random Mega filename
           function randomMegaId(length = 6, numberLength = 4) {
-            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             let result = '';
             for (let i = 0; i < length; i++) {
-              result += characters.charAt(Math.floor(Math.random() * characters.length));
+              result += chars.charAt(Math.floor(Math.random() * chars.length));
             }
             const number = Math.floor(Math.random() * Math.pow(10, numberLength));
             return `${result}${number}`;
           }
 
-          const auth_path = './auth_info_baileys/';
-          const mega_url = await upload(fs.createReadStream(auth_path + 'creds.json'), `${randomMegaId()}.json`);
-          const Scan_Id = mega_url.replace('https://mega.nz/file/', '');
+          const authPath = './auth_info_baileys/';
+          const megaUrl = await upload(fs.createReadStream(authPath + 'creds.json'), `${randomMegaId()}.json`);
+          const Scan_Id = megaUrl.replace('https://mega.nz/file/', '');
 
           console.log(`
 ====================  SESSION ID  ==========================                   
@@ -95,21 +90,18 @@ SESSION-ID ==> ${Scan_Id}
 -------------------   SESSION CLOSED   -----------------------
 `);
 
-          const msgsss = await Smd.sendMessage(user, { text: Scan_Id });
-          await Smd.sendMessage(user, { text: MESSAGE }, { quoted: msgsss });
+          const msg = await Smd.sendMessage(user, { text: Scan_Id });
+          await Smd.sendMessage(user, { text: MESSAGE }, { quoted: msg });
           await delay(1000);
-          try {
-            await fs.emptyDirSync('./auth_info_baileys');
-          } catch (e) { }
+          try { await fs.emptyDirSync('./auth_info_baileys'); } catch (e) {}
         }
 
-        // Save credentials
+        // Save updated creds
         Smd.ev.on('creds.update', saveCreds);
 
-        // Handle disconnections
+        // Handle disconnection reasons
         if (connection === "close") {
           const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
-
           switch (reason) {
             case DisconnectReason.connectionClosed:
               console.log("Connection closed!");
@@ -125,7 +117,7 @@ SESSION-ID ==> ${Scan_Id}
               console.log("Connection TimedOut!");
               break;
             default:
-              console.log('Connection closed with bot. Please run again.');
+              console.log('Connection closed with bot. Restarting...');
               console.log(reason);
               await delay(5000);
               exec('pm2 restart qasim');
