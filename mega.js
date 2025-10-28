@@ -1,47 +1,23 @@
 import * as mega from 'megajs';
-import { Readable } from 'stream';
 
-// 🔐 HARD CODED MEGA CREDENTIALS (DO NOT SHARE THIS FILE!)
+// Mega authentication credentials
 const auth = {
-    email: 'jakejasons580@gmail.com',   // 👈 YOUR EMAIL
-    password: 'Septorch111$$',          // 👈 YOUR PASSWORD
+    email: 'jakejasons580@gmail.com', // Replace with your Mega email
+    password: 'Septorch111$$', // Replace with your Mega password
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246'
 };
-
-console.log('🔐 Using hardcoded Mega credentials:');
-console.log('Email:', auth.email);
-console.log('Password length:', auth.password.length);
 
 // Function to upload a file to Mega and return the URL
 export const upload = (data, name) => {
     return new Promise((resolve, reject) => {
         try {
             // Authenticate with Mega storage
-            const storage = new mega.Storage(auth, (loginErr) => {
-                if (loginErr) {
-                    console.error('❌ Mega Login Failed:', loginErr);
-                    reject(loginErr);
-                    return;
-                }
-
-                console.log('✅ Mega Login Successful!');
-
-                // Upload the data (Buffer or Stream) to Mega
+            const storage = new mega.Storage(auth, () => {
+                // Upload the data stream (e.g., file stream) to Mega
                 const uploadStream = storage.upload({ name: name, allowUploadBuffering: true });
 
-                // ✅ Convert Buffer to Readable Stream if needed
-                let readable;
-                if (Buffer.isBuffer(data)) {
-                    readable = Readable.from([data]);
-                } else if (typeof data.pipe === 'function') {
-                    readable = data;
-                } else {
-                    reject(new Error('Data must be a Buffer or ReadableStream'));
-                    return;
-                }
-
                 // Pipe the data into Mega
-                readable.pipe(uploadStream);
+                data.pipe(uploadStream);
 
                 // When the file is successfully uploaded, resolve with the file's URL
                 storage.on("add", (file) => {
