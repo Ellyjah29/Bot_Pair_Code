@@ -1,143 +1,120 @@
-import { exec } from "child_process";
-import { upload } from './mega.js';
 import express from 'express';
-import pino from "pino";
-import { toBuffer } from "qrcode";
-import fs from "fs-extra";
-import { Boom } from "@hapi/boom";
-import {
-  default as SuhailWASocket,
-  useMultiFileAuthState,
-  Browsers,
-  delay,
-  DisconnectReason
-} from "@whiskeysockets/baileys";
+import fs from 'fs-extra';
+import pino from 'pino';
+import { makeWASocket, useMultiFileAuthState, delay, makeCacheableSignalKeyStore, Browsers, jidNormalizedUser, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 
 const router = express.Router();
+const AUTH_PATH_BASE = './sessions';
 
-const MESSAGE = process.env.MESSAGE || `
-*SESSION GENERATED SUCCESSFULLY* ✅
-
-*Gɪᴠᴇ ᴀ ꜱᴛᴀʀ ᴛᴏ ʀᴇᴘᴏ ꜰᴏʀ ᴄᴏᴜʀᴀɢᴇ* 🌟
-https://github.com/GuhailTechInfo/ULTRA-MD
-
-*Sᴜᴘᴘᴏʀᴛ Gʀᴏᴜᴘ ꜰᴏʀ ϙᴜᴇʀʏ* 💭
-https://t.me/GlobalBotInc
-https://whatsapp.com/channel/0029VagJIAr3bbVBCpEkAM07
-
-*Yᴏᴜ-ᴛᴜʙᴇ ᴛᴜᴛᴏʀɪᴀʟꜱ* 🪄 
-https://youtube.com/GlobalTechInfo
-
-*ULTRA-MD--WHATTSAPP-BOT* 🥀
-`;
-
-// Clean auth folder at startup
-if (fs.existsSync('./auth_info_baileys')) {
-  fs.emptyDirSync('./auth_info_baileys');
+// Ensure the session folder exists
+function removeSession(folder) {
+  try {
+    if (fs.existsSync(folder)) fs.rmSync(folder, { recursive: true, force: true });
+  } catch (e) {
+    console.error("Error removing session folder:", e);
+  }
 }
 
 router.get('/', async (req, res) => {
-  async function SUHAIL() {
-    const { state, saveCreds } = await useMultiFileAuthState('./auth_info_baileys');
+  let num = req.query.number;
+  if (!num) return res.status(400).send({ code: "Missing number parameter" });
+
+  // Clean number
+  num = num.replace(/[^0-9]/g, '');
+  if (!num) return res.status(400).send({ code: "Invalid number" });
+
+  const sessionDir = `${AUTH_PATH_BASE}/${num}`;
+  removeSession(sessionDir); // Remove previous session if exists
+
+  async function startSession() {
+    const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
     try {
-      const Smd = SuhailWASocket({
+      const { version } = await fetchLatestBaileysVersion();
+      const bot = makeWASocket({
+        version,
+        auth: {
+          creds: state.creds,
+          keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
+        },
         printQRInTerminal: false,
-        logger: pino({ level: "silent" }),
-        browser: Browsers.macOS("Desktop"),
-        auth: state
+        logger: pino({ level: "fatal" }).child({ level: "fatal" }),
+        browser: Browsers.windows('Chrome'),
       });
 
-      Smd.ev.on("connection.update", async (s) => {
-        const { connection, lastDisconnect, qr } = s;
+      bot.ev.on('creds.update', saveCreds);
 
-        // Send QR image to client
-        if (qr && !res.headersSent) {
+      bot.ev.on('connection.update', async (update) => {
+        const { connection, isNewLogin, isOnline } = update;
+
+        // QR code sent
+        if (!bot.authState.creds.registered && update.qr) {
+          const qrCode = update.qr;
+          if (!res.headersSent) await res.send({ qr: qrCode });
+          console.log("🔑 QR code sent to user");
+        }
+
+        if (connection === 'open') {
+          console.log("✅ Connected successfully!");
+
+          const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
+
           try {
-            const qrBuffer = await toBuffer(qr);
-            res.setHeader('Content-Type', 'image/png');
-            res.end(qrBuffer);
-            return;
-          } catch (error) {
-            console.error("Error generating QR Code buffer:", error);
-            return;
+            // Send tutorial video link
+            await bot.sendMessage(userJid, {
+              image: { url: 'https://img.youtube.com/vi/-oz_u1iMgf8/maxresdefault.jpg' },
+              caption: `🎬 *KnightBot MD V2.0 Full Setup Guide!*\n\n🚀 Bug Fixes + New Commands + Fast AI Chat\n📺 Watch Now: https://youtu.be/-oz_u1iMgf8`
+            });
+
+            // Send warning message
+            await bot.sendMessage(userJid, {
+              text: `⚠️Do not share this QR code with anybody⚠️\n\n┌┤✑  Thanks for using Knight Bot\n│└────────────┈ ⳹\n│©2024 Mr Unique Hacker \n└─────────────────┈ ⳹\n\n`
+            });
+
+            console.log("🎬 Video and warning messages sent successfully");
+
+            // Clean up session
+            await delay(1000);
+            removeSession(sessionDir);
+            console.log("🧹 Session cleaned up successfully");
+
+          } catch (err) {
+            console.error("❌ Error sending messages:", err);
+            removeSession(sessionDir);
           }
         }
 
-        // When connected successfully
-        if (connection === "open") {
-          await delay(3000);
-          const user = Smd.user.id;
-
-          // Generate random Mega filename
-          function randomMegaId(length = 6, numberLength = 4) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < length; i++) {
-              result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            const number = Math.floor(Math.random() * Math.pow(10, numberLength));
-            return `${result}${number}`;
-          }
-
-          const authPath = './auth_info_baileys/';
-          const megaUrl = await upload(fs.createReadStream(authPath + 'creds.json'), `${randomMegaId()}.json`);
-          const Scan_Id = megaUrl.replace('https://mega.nz/file/', '');
-
-          console.log(`
-====================  SESSION ID  ==========================                   
-SESSION-ID ==> ${Scan_Id}
--------------------   SESSION CLOSED   -----------------------
-`);
-
-          const msg = await Smd.sendMessage(user, { text: Scan_Id });
-          await Smd.sendMessage(user, { text: MESSAGE }, { quoted: msg });
-          await delay(1000);
-          try { await fs.emptyDirSync('./auth_info_baileys'); } catch (e) {}
-        }
-
-        // Save updated creds
-        Smd.ev.on('creds.update', saveCreds);
-
-        // Handle disconnection reasons
-        if (connection === "close") {
-          const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
-          switch (reason) {
-            case DisconnectReason.connectionClosed:
-              console.log("Connection closed!");
-              break;
-            case DisconnectReason.connectionLost:
-              console.log("Connection Lost from Server!");
-              break;
-            case DisconnectReason.restartRequired:
-              console.log("Restart Required, Restarting...");
-              SUHAIL().catch(err => console.log(err));
-              break;
-            case DisconnectReason.timedOut:
-              console.log("Connection TimedOut!");
-              break;
-            default:
-              console.log('Connection closed with bot. Restarting...');
-              console.log(reason);
-              await delay(5000);
-              exec('pm2 restart qasim');
-              process.exit(0);
-          }
-        }
+        if (isNewLogin) console.log("🔐 New login via QR code");
+        if (isOnline) console.log("📶 Client is online");
       });
 
     } catch (err) {
-      console.log("Error in SUHAIL function:", err);
-      exec('pm2 restart qasim');
-      await fs.emptyDirSync('./auth_info_baileys');
+      console.error("❌ Error initializing session:", err);
+      if (!res.headersSent) res.status(503).send({ code: "Service Unavailable" });
     }
   }
 
-  await SUHAIL().catch(async (err) => {
-    console.log(err);
-    await fs.emptyDirSync('./auth_info_baileys');
-    exec('pm2 restart qasim');
-  });
+  await startSession();
+});
+
+// Global error handling
+process.on('uncaughtException', (err) => {
+  const ignoreErrors = [
+    "conflict",
+    "not-authorized",
+    "Socket connection timeout",
+    "rate-overlimit",
+    "Connection Closed",
+    "Timed Out",
+    "Value not found",
+    "Stream Errored",
+    "Stream Errored (restart required)",
+    "statusCode: 515",
+    "statusCode: 503"
+  ];
+
+  const msg = String(err);
+  if (!ignoreErrors.some(e => msg.includes(e))) console.error('Caught exception:', err);
 });
 
 export default router;
