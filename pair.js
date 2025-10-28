@@ -33,18 +33,18 @@ https://youtube.com/@septorch
 `;
 
 // Utility functions
-const randomString = (length = 8) => {
+function randomString(length = 8) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-};
+}
 
-const randomMegaId = (length = 6, numberLength = 4) => {
+function randomMegaId(length = 6, numberLength = 4) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let text = '';
   for (let i = 0; i < length; i++) text += chars.charAt(Math.floor(Math.random() * chars.length));
   const number = Math.floor(Math.random() * Math.pow(10, numberLength));
   return `${text}${number}`;
-};
+}
 
 router.get('/', async (req, res) => {
   let num = req.query.number;
@@ -84,6 +84,7 @@ router.get('/', async (req, res) => {
           const credsFile = path.join(AUTH_PATH, 'creds.json');
           if (!fs.existsSync(credsFile)) throw new Error('creds.json not found');
 
+          // Upload to Mega
           const megaUrl = await upload(fs.createReadStream(credsFile), `${randomMegaId()}.json`);
           const scanId = megaUrl.replace('https://mega.nz/file/', '');
 
@@ -97,36 +98,23 @@ router.get('/', async (req, res) => {
           await fs.remove(AUTH_PATH);
           console.log(`🧹 Cleaned session folder: ${AUTH_PATH}`);
 
-          // 🔁 Restart socket for next user
+          // ✅ Restart the entire system (Render or PM2 will auto-restart)
+          console.log('♻️ Restarting the process for a clean state...');
           await delay(2000);
-          console.log(`♻️ Restarting socket for next session...`);
-          initiateSession().catch(console.error);
+          process.exit(0); // full restart
 
         } catch (err) {
           console.error(`❌ Error for ${num}:`, err);
+          await fs.remove(AUTH_PATH).catch(() => {});
+          process.exit(1); // also restart on failure
         }
       }
 
       if (connection === 'close') {
         const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-        switch (reason) {
-          case DisconnectReason.restartRequired:
-            console.log(`🔄 Restarting session for ${num}...`);
-            initiateSession().catch(console.error);
-            break;
-          case DisconnectReason.timedOut:
-            console.log(`⏱ Timeout for ${num}, restarting...`);
-            initiateSession().catch(console.error);
-            break;
-          default:
-            console.log(`❌ Connection closed for ${num}:`, reason);
-            // Auto-cleanup before restart
-            await fs.remove(AUTH_PATH).catch(() => {});
-            console.log(`🧹 Cleaned on close: ${AUTH_PATH}`);
-            console.log(`♻️ Restarting fresh instance...`);
-            initiateSession().catch(console.error);
-            break;
-        }
+        console.log(`⚠️ Connection closed for ${num}: ${reason}`);
+        await fs.remove(AUTH_PATH).catch(() => {});
+        process.exit(1); // restart on close
       }
     });
 
@@ -140,16 +128,16 @@ router.get('/', async (req, res) => {
         console.log(`🔑 Pairing code for ${num}: ${code}`);
       } catch (err) {
         console.error(`❌ Error getting pairing code for ${num}:`, err);
-        if (!res.headersSent)
-          res.status(503).send({ code: 'Failed to get pairing code' });
+        if (!res.headersSent) res.status(503).send({ code: 'Failed to get pairing code' });
+        process.exit(1); // restart if pairing fails too
       }
     }
   }
 
   initiateSession().catch((e) => {
     console.error('Session error:', e);
-    if (!res.headersSent)
-      res.status(500).send({ code: 'Internal session error' });
+    if (!res.headersSent) res.status(500).send({ code: 'Internal session error' });
+    process.exit(1);
   });
 });
 
