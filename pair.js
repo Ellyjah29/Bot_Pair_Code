@@ -19,17 +19,16 @@ const router = express.Router();
 const MESSAGE = process.env.MESSAGE || `
 *SESSION GENERATED SUCCESSFULLY* ✅
 
-*Gɪᴠᴇ ᴀ ꜱᴛᴀʀ ᴛᴏ ʀᴇᴘᴏ ꜰᴏʀ ᴄᴏᴜʀᴀɢᴇ* 🌟
-https://github.com/GuhailTechInfo/ULTRA-MD
 
 *Sᴜᴘᴘᴏʀᴛ Gʀᴏᴜᴘ ꜰᴏʀ ϙᴜᴇʀʏ* 💭
-https://t.me/GlobalBotInc
-https://whatsapp.com/channel/0029VagJIAr3bbVBCpEkAM07
+https://chat.whatsapp.com/GGBjhgrxiAS1Xf5shqiGXH?mode=wwt
+
+https://whatsapp.com/channel/0029Vb1ydGk8qIzkvps0nZ04
 
 *Yᴏᴜ-ᴛᴜʙᴇ ᴛᴜᴛᴏʀɪᴀʟꜱ* 🪄 
-https://youtube.com/GlobalTechInfo
+https://youtube.com/@septorch?si=rVCGU2LM7H1aQKxo
 
-*ULTRA-MD--WHATSAPP-BOT* 🥀
+*SEPTORCH--WHATSAPP-BOT* 🤖
 `;
 
 // 🔹 Helper: random Mega ID
