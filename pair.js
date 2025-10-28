@@ -1,8 +1,10 @@
 import express from 'express';
 import fs from 'fs-extra';
+import path from 'path';
 import pino from 'pino';
 import { Boom } from '@hapi/boom';
 import { upload } from './mega.js';
+import rateLimit from 'express-rate-limit';
 import {
   default as makeWASocket,
   useMultiFileAuthState,
@@ -28,114 +30,124 @@ https://whatsapp.com/channel/0029VagJIAr3bbVBCpEkAM07
 *Yᴏᴜ-ᴛᴜʙᴇ ᴛᴜᴛᴏʀɪᴀʟꜱ* 🪄 
 https://youtube.com/GlobalTechInfo
 
-*ULTRA-MD--WHATTSAPP-BOT* 🥀
+*ULTRA-MD--WHATSAPP-BOT* 🥀
 `;
 
-// Ensure auth directory is empty at start
-const AUTH_PATH = './auth_info_baileys';
-if (fs.existsSync(AUTH_PATH)) fs.emptyDirSync(AUTH_PATH);
+// Rate limit: max 10 requests per minute per IP
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many session requests, please try again later.' },
+});
+router.use(limiter);
 
-// Helper: generate random Mega ID
+// Helper: random string generator
 function randomMegaId(length = 6, numberLength = 4) {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  const number = Math.floor(Math.random() * Math.pow(10, numberLength));
-  return `${result}${number}`;
+  for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+  const num = Math.floor(Math.random() * Math.pow(10, numberLength));
+  return `${result}${num}`;
+}
+
+function withTimeout(promise, ms, message = 'Operation timed out') {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeout));
 }
 
 router.get('/', async (req, res) => {
   let num = req.query.number;
-  if (!num) return res.status(400).send({ code: "Missing number parameter" });
+  if (!num) return res.status(400).send({ code: 'Missing number parameter' });
 
-  // Clean phone number
   num = num.replace(/[^0-9]/g, '');
-  if (!num) return res.status(400).send({ code: "Invalid number" });
+  if (!num) return res.status(400).send({ code: 'Invalid number' });
 
-  async function initiateSession() {
+  const sessionId = randomMegaId(8);
+  const AUTH_PATH = path.join('/tmp', `session_${sessionId}`); // ✅ Use /tmp for Render (only writeable area)
+  await fs.ensureDir(AUTH_PATH);
+
+  async function cleanUp() {
+    try {
+      await fs.remove(AUTH_PATH);
+      console.log(`🧹 Cleaned session ${sessionId}`);
+    } catch {}
+  }
+
+  try {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_PATH);
 
     const Smd = makeWASocket({
       auth: {
         creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
+        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
       },
       printQRInTerminal: false,
-      logger: pino({ level: "fatal" }).child({ level: "fatal" }),
+      logger: pino({ level: 'silent' }),
       browser: Browsers.macOS('Safari'),
     });
 
     Smd.ev.on('creds.update', saveCreds);
 
-    // Handle connection updates
     Smd.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect } = update;
 
       if (connection === 'open') {
-        console.log("✅ WhatsApp connection opened!");
+        console.log(`✅ ${sessionId}: Connected`);
 
         try {
-          // Wait to ensure creds.json is written
-          await delay(5000);
-          const credsFile = AUTH_PATH + '/creds.json';
-          if (!fs.existsSync(credsFile)) throw new Error("creds.json not found");
+          await delay(4000);
+          const credsFile = path.join(AUTH_PATH, 'creds.json');
+          if (!fs.existsSync(credsFile)) throw new Error('creds.json not found');
 
-          // Upload to Mega
-          const mega_url = await upload(fs.createReadStream(credsFile), `${randomMegaId()}.json`);
-          const Scan_Id = mega_url.replace('https://mega.nz/file/', '');
+          const megaUrl = await withTimeout(
+            upload(fs.createReadStream(credsFile), `${randomMegaId()}.json`),
+            20000,
+            'Upload timeout'
+          );
+          const scanId = megaUrl.replace('https://mega.nz/file/', '');
 
-          // Send Mega ID and follow-up message to user
           const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
-          const msg = await Smd.sendMessage(userJid, { text: Scan_Id });
+          const msg = await Smd.sendMessage(userJid, { text: scanId });
           await Smd.sendMessage(userJid, { text: MESSAGE }, { quoted: msg });
 
-          console.log("📤 Mega ID and welcome message sent successfully");
-
-          // Clean up session folder
+          console.log(`📤 ${sessionId}: Sent to ${num}`);
           await delay(1000);
-          await fs.emptyDir(AUTH_PATH);
-          console.log("🧹 Session folder cleaned up");
+          await cleanUp();
 
-        } catch (e) {
-          console.error("❌ Error during file upload or message send:", e);
+        } catch (err) {
+          console.error(`❌ ${sessionId}:`, err.message);
+          await cleanUp();
         }
       }
 
       if (connection === 'close') {
         const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
-        switch (reason) {
-          case DisconnectReason.restartRequired:
-            console.log("🔄 Restart required, restarting session...");
-            initiateSession().catch(console.error);
-            break;
-          case DisconnectReason.timedOut:
-            console.log("⏱ Connection timed out, restarting...");
-            initiateSession().catch(console.error);
-            break;
-          default:
-            console.log("❌ Connection closed:", reason);
-            break;
-        }
+        console.log(`⚠️ ${sessionId}: Connection closed (${reason})`);
+        await cleanUp();
       }
     });
 
-    // Request pairing code if user not registered
     if (!Smd.authState.creds.registered) {
       await delay(1500);
       try {
-        const code = await Smd.requestPairingCode(num);
-        if (!res.headersSent) await res.send({ code });
-        console.log("🔑 Pairing code sent to user:", code);
-      } catch (e) {
-        console.error("❌ Error requesting pairing code:", e);
-        if (!res.headersSent) await res.status(503).send({ code: "Failed to get pairing code" });
+        const code = await withTimeout(Smd.requestPairingCode(num), 15000, 'Pairing code timeout');
+        if (!res.headersSent) res.send({ code, sessionId });
+        console.log(`🔑 ${sessionId}: Pairing code ${code}`);
+      } catch (err) {
+        console.error(`❌ ${sessionId}: Failed to get code -`, err.message);
+        if (!res.headersSent) res.status(503).send({ code: 'Failed to get pairing code' });
+        await cleanUp();
       }
     }
-  }
 
-  await initiateSession();
+  } catch (err) {
+    console.error(`❌ ${sessionId}:`, err.message);
+    if (!res.headersSent) res.status(500).send({ code: 'Internal error' });
+    await cleanUp();
+  }
 });
 
 export default router;
