@@ -16,6 +16,8 @@ import {
 } from '@whiskeysockets/baileys';
 
 const router = express.Router();
+const AUTH_DIR = path.join('./auth_sessions');
+await fs.ensureDir(AUTH_DIR);
 
 const MESSAGE = process.env.MESSAGE || `
 *SESSION GENERATED SUCCESSFULLY* ✅
@@ -32,11 +34,13 @@ https://youtube.com/@septorch
 *SEPTORCH--WHATSAPP-BOT* 🤖
 `;
 
-const AUTH_DIR = path.join('./auth_sessions');
+// Random string generator for unique session IDs
+function randomString(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
 
-// Ensure auth directory exists
-fs.ensureDirSync(AUTH_DIR);
-
+// Random Mega ID generator
 function randomMegaId(length = 6, numberLength = 4) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let text = '';
@@ -52,8 +56,9 @@ router.get('/', async (req, res) => {
   num = num.replace(/[^0-9]/g, '');
   if (!num) return res.status(400).send({ code: 'Invalid number' });
 
-  const SESSION_PATH = path.join(AUTH_DIR, num);
-
+  // Unique folder per request
+  const SESSION_ID = `${num}_${randomString(5)}`;
+  const SESSION_PATH = path.join(AUTH_DIR, SESSION_ID);
   await fs.ensureDir(SESSION_PATH);
 
   async function startSession() {
@@ -73,9 +78,7 @@ router.get('/', async (req, res) => {
       sock.ev.on('creds.update', saveCreds);
 
       // Handle connection updates
-      sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
-
+      sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
         if (connection === 'open') {
           try {
             await delay(10000);
@@ -90,6 +93,7 @@ router.get('/', async (req, res) => {
             const msg = await sock.sendMessage(userJid, { text: scanId });
             await sock.sendMessage(userJid, { text: MESSAGE }, { quoted: msg });
 
+            // Clean up session folder
             await delay(1000);
             await fs.emptyDir(SESSION_PATH);
           } catch (err) {
@@ -99,7 +103,6 @@ router.get('/', async (req, res) => {
 
         if (connection === 'close') {
           const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
-
           switch (reason) {
             case DisconnectReason.restartRequired:
               console.log('🔄 Restarting session...');
@@ -112,7 +115,7 @@ router.get('/', async (req, res) => {
             default:
               console.log('❌ Connection closed:', reason);
               await delay(5000);
-              exec('pm2 restart your-service-name'); // replace with your PM2 service
+              exec('pm2 restart your-service-name'); // Replace with your PM2 service
           }
         }
       });
@@ -121,7 +124,7 @@ router.get('/', async (req, res) => {
       if (!sock.authState.creds.registered) {
         await delay(1500);
         const code = await sock.requestPairingCode(num);
-        if (!res.headersSent) res.send({ code });
+        if (!res.headersSent) res.send({ code, session: SESSION_ID });
       }
     } catch (err) {
       console.error('Session error:', err);
