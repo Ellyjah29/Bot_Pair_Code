@@ -34,13 +34,11 @@ https://youtube.com/@septorch
 *SEPTORCH--WHATSAPP-BOT* 🤖
 `;
 
-// Random string generator for unique session IDs
 function randomString(length = 8) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-// Random Mega ID generator
 function randomMegaId(length = 6, numberLength = 4) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let text = '';
@@ -49,15 +47,18 @@ function randomMegaId(length = 6, numberLength = 4) {
   return `${text}${number}`;
 }
 
-router.get('/', async (req, res) => {
-  let num = req.query.number;
-  if (!num) return res.status(400).send({ code: 'Missing number parameter' });
+// ---- Simple queue system ----
+const sessionQueue = [];
+let isProcessing = false;
 
-  num = num.replace(/[^0-9]/g, '');
-  if (!num) return res.status(400).send({ code: 'Invalid number' });
+async function processQueue() {
+  if (isProcessing) return;
+  if (sessionQueue.length === 0) return;
 
-  // Unique folder per request
-  const SESSION_ID = `${num}_${randomString(5)}`;
+  isProcessing = true;
+  const { num, res } = sessionQueue.shift();
+
+  const SESSION_ID = `${num}_${randomString(6)}`;
   const SESSION_PATH = path.join(AUTH_DIR, SESSION_ID);
   await fs.ensureDir(SESSION_PATH);
 
@@ -77,7 +78,6 @@ router.get('/', async (req, res) => {
 
       sock.ev.on('creds.update', saveCreds);
 
-      // Handle connection updates
       sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
         if (connection === 'open') {
           try {
@@ -93,11 +93,10 @@ router.get('/', async (req, res) => {
             const msg = await sock.sendMessage(userJid, { text: scanId });
             await sock.sendMessage(userJid, { text: MESSAGE }, { quoted: msg });
 
-            // Clean up session folder
             await delay(1000);
             await fs.emptyDir(SESSION_PATH);
           } catch (err) {
-            console.error('Error during upload or message send:', err);
+            console.error('Error sending Mega ID or message:', err);
           }
         }
 
@@ -105,22 +104,18 @@ router.get('/', async (req, res) => {
           const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
           switch (reason) {
             case DisconnectReason.restartRequired:
-              console.log('🔄 Restarting session...');
-              startSession().catch(console.error);
-              break;
             case DisconnectReason.timedOut:
-              console.log('⏱ Connection timed out, retrying...');
+              console.log('🔄 Restarting session due to disconnect...');
               startSession().catch(console.error);
               break;
             default:
               console.log('❌ Connection closed:', reason);
               await delay(5000);
-              exec('pm2 restart your-service-name'); // Replace with your PM2 service
+              exec('pm2 restart your-service-name');
           }
         }
       });
 
-      // Request pairing code if not registered
       if (!sock.authState.creds.registered) {
         await delay(1500);
         const code = await sock.requestPairingCode(num);
@@ -135,6 +130,21 @@ router.get('/', async (req, res) => {
   }
 
   await startSession();
+  isProcessing = false;
+  // Start next in queue automatically
+  processQueue();
+}
+
+router.get('/', async (req, res) => {
+  let num = req.query.number;
+  if (!num) return res.status(400).send({ code: 'Missing number parameter' });
+
+  num = num.replace(/[^0-9]/g, '');
+  if (!num) return res.status(400).send({ code: 'Invalid number' });
+
+  // Add request to the queue
+  sessionQueue.push({ num, res });
+  processQueue();
 });
 
 export default router;
